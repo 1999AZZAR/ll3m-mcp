@@ -4,6 +4,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { textResult } from "./envelope.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -234,11 +235,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (name) {
     case "generate_modeling_plan":
       const planPrompt = await fs.readFile(path.join(__dirname, "agents/prompts/planner.md"), "utf8");
-      return { content: [{ type: "text", text: `PLANNER_INSTRUCTIONS:\n${planPrompt}\n\nUSER_REQUEST: ${args?.prompt}` }] };
+      return textResult(name, `PLANNER_INSTRUCTIONS:\n${planPrompt}\n\nUSER_REQUEST: ${args?.prompt}` );
 
     case "get_agent_instructions":
       const instructions = await fs.readFile(path.join(__dirname, `agents/prompts/${args?.agent}.md`), "utf8");
-      return { content: [{ type: "text", text: instructions }] };
+      return textResult(name, instructions );
 
     case "get_api_docs":
       try {
@@ -247,43 +248,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           timeout: 30_000,
           maxBuffer: 4 * 1024 * 1024,
         });
-        return { content: [{ type: "text", text: result }] };
+        return textResult(name, result );
       } catch (e: any) {
-        return { content: [{ type: "text", text: "Error fetching docs: " + e.message }] };
+        return textResult(name, "Error fetching docs: " + e.message );
       }
 
     case "get_modeling_patterns":
         try {
             const patternContent = await fs.readFile(path.join(PATTERNS_PATH, `${args?.category}.md`), "utf8");
-            return { content: [{ type: "text", text: patternContent }] };
+            return textResult(name, patternContent );
         } catch (e: any) {
-            return { content: [{ type: "text", text: "Error fetching pattern: " + e.message }] };
+            return textResult(name, "Error fetching pattern: " + e.message );
         }
 
     case "get_blender_helpers":
         try {
             const helperPath = path.join(BODY_PATH, "addon/blender_mcp_addon/blmcp_helpers.py");
             const helpers = await fs.readFile(helperPath, "utf8");
-            return { content: [{ type: "text", text: "Available high-level Python helpers:\n\n" + helpers }] };
+            return textResult(name, "Available high-level Python helpers:\n\n" + helpers );
         } catch (e: any) {
-            return { content: [{ type: "text", text: "Error fetching helpers: " + e.message }] };
+            return textResult(name, "Error fetching helpers: " + e.message );
         }
 
     case "execute_blender_code":
         try {
           const result = await sendToBlender(args?.code as string, !!args?.strict_json);
-          return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+          return textResult(name, JSON.stringify(result, null, 2) );
         } catch (e: any) {
-          return { content: [{ type: "text", text: "Error: " + e.message }] };
+          return textResult(name, "Error: " + e.message );
         }
 
     case "get_scene_summary":
         const sceneRes = await runBodyTool("get_objects_summary");
-        return { content: [{ type: "text", text: JSON.stringify(sceneRes, null, 2) }] };
+        return textResult(name, JSON.stringify(sceneRes, null, 2) );
 
     case "get_object_details":
         const objRes = await runBodyTool("get_object_detail_summary", { name: args?.object_name });
-        return { content: [{ type: "text", text: JSON.stringify(objRes, null, 2) }] };
+        return textResult(name, JSON.stringify(objRes, null, 2) );
 
     case "get_blendfile_summary":
         const summaryTools: Record<string, string> = {
@@ -294,23 +295,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           usage_guess: "get_blendfile_summary_usage_guess",
         };
         const blendRes = await runBodyTool(summaryTools[String(args?.type)]);
-        return { content: [{ type: "text", text: JSON.stringify(blendRes, null, 2) }] };
+        return textResult(name, JSON.stringify(blendRes, null, 2) );
 
     case "render_output":
         const tool = args?.type === "viewport" ? "render_viewport_to_path" : "render_thumbnail_to_path";
         const rendRes = await runBodyTool(tool, { output_path: args?.output_path || "render.png" });
-        return { content: [{ type: "text", text: JSON.stringify(rendRes, null, 2) }] };
+        return textResult(name, JSON.stringify(rendRes, null, 2) );
 
     case "save_blend":
         const copyFlag = args?.as_copy ? ", copy=True" : "";
         const filepath = JSON.stringify(String(args?.filepath));
         const saveCode = `import bpy; bpy.ops.wm.save_as_mainfile(filepath=${filepath}${copyFlag})\nresult={"status":"saved"}`;
         const saveRes = await sendToBlender(saveCode, true);
-        return { content: [{ type: "text", text: JSON.stringify(saveRes, null, 2) }] };
+        return textResult(name, JSON.stringify(saveRes, null, 2) );
 
     case "get_screenshot":
         const screenRes = await runBodyTool("get_screenshot_of_window_as_image", { size_limit_in_bytes: 0 });
-        return { content: [{ type: "text", text: JSON.stringify(screenRes, null, 2) }] };
+        return textResult(name, JSON.stringify(screenRes, null, 2) );
 
     case "get_fast_feedback":
         const fastPath = JSON.stringify(String(args?.output_path || "critic_feedback.png"));
@@ -319,7 +320,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           `result = helpers.get_fast_feedback(${fastPath}, resolution_scale=${scale})`,
           true,
         );
-        return { content: [{ type: "text", text: JSON.stringify(fastRes, null, 2) }] };
+        return textResult(name, JSON.stringify(fastRes, null, 2) );
 
     case "navigation":
         let navTool = "";
@@ -327,15 +328,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         else if (args?.action === "focus_object") navTool = "jump_to_view3d_object_by_name";
         else navTool = "jump_to_view3d_object_data_by_name";
         const navRes = await runBodyTool(navTool, { name: args?.name });
-        return { content: [{ type: "text", text: JSON.stringify(navRes, null, 2) }] };
+        return textResult(name, JSON.stringify(navRes, null, 2) );
 
     case "execute_staged_refinement":
         try {
             // This tool takes Critic deltas (Python code snippets) and executes them in a clean namespace
             const result = await sendToBlender(args?.delta_instructions as string, true);
-            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+            return textResult(name, JSON.stringify(result, null, 2) );
         } catch (e: any) {
-            return { content: [{ type: "text", text: "Error during refinement: " + e.message }] };
+            return textResult(name, "Error during refinement: " + e.message );
         }
 
     default:

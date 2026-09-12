@@ -98,6 +98,12 @@ Ask the MCP client to call `get_scene_summary`. A successful response reports th
 - Confirm the MCP client was restarted after configuration changes.
 - Rebuild `brain/dist` after changing TypeScript source.
 
+## Environment Variables
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `HELA_ENVELOPE` | *unset = off* | Set to `true` to wrap tool results in the canonical HeLaResult envelope (`ok/summary/data/artifacts/provenance/warnings/sideEffects/execution`; `blender-execute`/`save`/`render`/`navigate` report `sideEffects`). Off = byte-identical legacy output. Run/step ids propagate from `HELA_RUN_ID`/`HELA_STEP_ID`. |
+
 ## Operation
 
 Execute the modeling loop by providing a technical or descriptive request:
