@@ -5,8 +5,14 @@
 """
 Weak sandbox for LLM-generated code execution.
 
-Note that this isn't really a sandbox,
-more guidance that some things should not be done.
+SECURITY NOTICE (R3 Native Code Execution):
+This module is an in-process operator filter to catch common accidental
+commands (e.g. sys.exit, wm.quit_blender, wm.read_factory_settings).
+It is NOT a sandbox, does NOT provide an OS security boundary, and CANNOT
+isolate malicious or untrusted code. Any code executed through Blender
+Python runs with full process and OS privileges of the user running Blender.
+For multi-tenant or untrusted environments, Blender must run inside an
+isolated container or ephemeral VM worker.
 
 Notes:
 
@@ -74,7 +80,11 @@ _BLOCKED_OPS_SET: frozenset[str] = frozenset(op for op, _reason in _BLOCKED_OPS)
 
 
 class WeakSandboxForLLM:
-    """Context manager wrapping ``exec()`` of LLM-generated code."""
+    """Context manager wrapping ``exec()`` of LLM-generated code.
+
+    SECURITY NOTICE: This is an operator filter, not an OS security boundary.
+    Code executes with full Blender process privileges (R3 Native Execution).
+    """
     __slots__ = (
         "_store_attrs",
         "_store_ops",

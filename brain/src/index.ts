@@ -157,7 +157,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "execute_blender_code",
-        description: "Execute arbitrary Python code in Blender.",
+        description: "[R3 Native Execution] Execute arbitrary Python code in Blender. WARNING: Runs with full Blender process privileges; WeakSandboxForLLM is an in-process operator filter, not an OS sandbox. Gated by HELA_PLASTID_ALLOW_CODE.",
         inputSchema: { type: "object", properties: { code: { type: "string" }, strict_json: { type: "boolean" } }, required: ["code"] },
       },
       {
@@ -215,7 +215,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "execute_staged_refinement",
-        description: "Execute a technical Geometric Delta provided by the Critic. Use this recursively until the Quality Score reaches 90+.",
+        description: "[R3 Native Execution] Execute a technical Geometric Delta (Python code) provided by the Critic. Use this recursively until the Quality Score reaches 90+. WARNING: Runs with full Blender process privileges. Gated by HELA_PLASTID_ALLOW_CODE.",
         inputSchema: { 
             type: "object", 
             properties: { 
@@ -270,13 +270,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             return textResult(name, "Error fetching helpers: " + e.message );
         }
 
-    case "execute_blender_code":
+    case "execute_blender_code": {
+        const allowCode = process.env['HELA_PLASTID_ALLOW_CODE'];
+        const isRestricted = process.env['HELA_PROFILE'] === 'restricted' || process.env['HELA_PROFILE'] === 'safe';
+        if (allowCode === 'false' || (isRestricted && allowCode !== 'true')) {
+          return textResult(name, "execute_blender_code is disabled (set HELA_PLASTID_ALLOW_CODE=true to enable)");
+        }
         try {
           const result = await sendToBlender(args?.code as string, !!args?.strict_json);
           return textResult(name, JSON.stringify(result, null, 2) );
         } catch (e: any) {
           return textResult(name, "Error: " + e.message );
         }
+    }
 
     case "get_scene_summary":
         const sceneRes = await runBodyTool("get_objects_summary");
@@ -330,7 +336,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const navRes = await runBodyTool(navTool, { name: args?.name });
         return textResult(name, JSON.stringify(navRes, null, 2) );
 
-    case "execute_staged_refinement":
+    case "execute_staged_refinement": {
+        const allowCode = process.env['HELA_PLASTID_ALLOW_CODE'];
+        const isRestricted = process.env['HELA_PROFILE'] === 'restricted' || process.env['HELA_PROFILE'] === 'safe';
+        if (allowCode === 'false' || (isRestricted && allowCode !== 'true')) {
+          return textResult(name, "execute_staged_refinement is disabled (set HELA_PLASTID_ALLOW_CODE=true to enable)");
+        }
         try {
             // This tool takes Critic deltas (Python code snippets) and executes them in a clean namespace
             const result = await sendToBlender(args?.delta_instructions as string, true);
@@ -338,6 +349,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         } catch (e: any) {
             return textResult(name, "Error during refinement: " + e.message );
         }
+    }
 
     default:
       throw new Error("Tool not found");

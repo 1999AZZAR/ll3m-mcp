@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && cp -r src/agents dist/ && cp src/*.py dist/",
+    "test": "node --experimental-strip-types test/brain-envelope.test.mjs && node test/plastid-safety.test.mjs",
     "start": "node dist/index.js"
   },
   "dependencies": {

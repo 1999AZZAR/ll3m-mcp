@@ -102,7 +102,15 @@ Ask the MCP client to call `get_scene_summary`. A successful response reports th
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
+| `HELA_PLASTID_ALLOW_CODE` | *unset = allow* | Code execution control for `execute_blender_code` and `execute_staged_refinement` (R3 Native Execution). Set to `false` to disable. Under `HELA_PROFILE=restricted`, execution is denied unless explicitly set to `true`. |
 | `HELA_ENVELOPE` | *unset = off* | Set to `true` to wrap tool results in the canonical HeLaResult envelope (`ok/summary/data/artifacts/provenance/warnings/sideEffects/execution`; `blender-execute`/`save`/`render`/`navigate` report `sideEffects`). Off = byte-identical legacy output. Run/step ids propagate from `HELA_RUN_ID`/`HELA_STEP_ID`. |
+
+## Security Model (R3 Native Execution)
+
+Blender code execution (`execute_blender_code`, `execute_staged_refinement`) executes arbitrary Python code within the local Blender process.
+
+- **WeakSandboxForLLM Notice**: The add-on includes `WeakSandboxForLLM`, which is an **in-process operator filter** designed to catch accidental destructive commands (e.g. `sys.exit()`, `wm.quit_blender`). It is **NOT** an OS security boundary or sandbox.
+- **Isolated Worker Guidance**: In multi-tenant, untrusted, or automated pipeline deployments, Blender must be isolated inside a dedicated worker container or ephemeral VM with no network access or access to sensitive host directories.
 
 ## Operation
 
