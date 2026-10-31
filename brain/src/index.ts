@@ -28,7 +28,7 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "4.2.0",
+    version: "3.0.0",
     description: "Recursive Staged Inverse Graphics LL3M Agent: Perfect Clone Loop",
   },
   {
